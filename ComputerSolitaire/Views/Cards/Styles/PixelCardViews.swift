@@ -309,22 +309,24 @@ enum PixelSprites {
     }
 
     // Compact pip suits use an even 6x6 footprint so their origins and centers
-    // stay on whole grid cells across the responsive card layout.
+    // stay on whole grid cells across the responsive card layout. Every row is
+    // horizontally symmetric so the 180-degree rotation used for bottom pips
+    // reads as the same symbol upside down.
     static let spadePip = PixelSprite("""
     ..##..
     .####.
     ######
     ######
-    ##..##
     ..##..
+    .####.
     """)
 
     static let heartPip = PixelSprite("""
-    .##.##
+    ##..##
+    ######
     ######
     ######
     .####.
-    ..##..
     ..##..
     """)
 
@@ -339,11 +341,11 @@ enum PixelSprites {
 
     static let clubPip = PixelSprite("""
     ..##..
-    .####.
+    ..##..
+    ######
     ######
     ..##..
     .####.
-    ..##..
     """)
 
     static func pipSuit(_ suit: Suit) -> PixelSprite {
