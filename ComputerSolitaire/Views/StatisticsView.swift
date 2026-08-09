@@ -125,6 +125,7 @@ private struct StatisticsOverviewView: View {
             titleVisibility: .visible
         ) {
             Button("Reset All Statistics", role: .destructive) {
+                HapticManager.shared.play(.destructiveActionConfirmed)
                 resetAllStatistics()
             }
             Button("Cancel", role: .cancel) {}
@@ -333,6 +334,7 @@ private struct GameStatisticsDetailView: View {
             titleVisibility: .visible
         ) {
             Button("Reset \(effectiveScopeTitle) Statistics", role: .destructive) {
+                HapticManager.shared.play(.destructiveActionConfirmed)
                 resetStatistics()
             }
             Button("Cancel", role: .cancel) {}

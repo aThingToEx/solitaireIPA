@@ -467,7 +467,7 @@ struct ContentView: View {
     /// AppStorage selection in sync.
     private func requestGameSwitch(to mode: GameMode) {
         guard mode != viewModel.gameMode else { return }
-        hapticFeedback.play(.settingsSelection)
+        hapticFeedback.play(.gameSwitched)
         switchGame(to: mode)
     }
 
@@ -848,6 +848,15 @@ struct ContentView: View {
             // cascade is mid-flight must land the cards, not finish the show.
             guard isEnabled, winCelebration.isAnimating, viewModel.isWin else { return }
             presentSettledCelebration()
+        }
+        .onChange(of: viewModel.isGolfHoleDead) { _, isDead in
+            guard !isHydratingGame, isDead else { return }
+            HapticManager.shared.play(.golfHoleDead)
+        }
+        .onChange(of: viewModel.golfMatch.isComplete) { _, isComplete in
+            guard !isHydratingGame, isComplete else { return }
+            // A finished match is Golf's win.
+            HapticManager.shared.play(.gameWon)
         }
         .onChange(of: viewModel.state.waste.count) { _, newValue in
             let stockCount = viewModel.state.stock.count
@@ -1358,7 +1367,13 @@ struct ContentView: View {
                     if !started { return }
                 }
                 drag.dragTranslation = value.translation
-                drag.setActiveTarget(dropTarget(at: value.location))
+                let newTarget = dropTarget(at: value.location)
+                if newTarget != drag.activeTarget,
+                   let newTarget,
+                   viewModel.canDrop(to: destination(for: newTarget)) {
+                    HapticManager.shared.play(.dropTargetAcquired)
+                }
+                drag.setActiveTarget(newTarget)
             }
             .onEnded { _ in
                 finishDrag()
@@ -1760,7 +1775,6 @@ struct ContentView: View {
         guard !viewModel.isDragging, !isDroppingCards, !isReturningDrag else { return }
         guard !viewModel.isWin else { return }
         guard let snapshot = viewModel.peekUndoSnapshot() else { return }
-        HapticManager.shared.play(.undoMove)
         // Undo mutates the position a live deal flight refers to; land the
         // flight before its reverse begins so the two never run concurrently.
         cancelDealAnimation()
