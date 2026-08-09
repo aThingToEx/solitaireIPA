@@ -148,7 +148,7 @@ struct ContentView: View {
     @State private var isAutoFinishing = false
     @State private var isShowingRulesAndScoring = false
     @State private var isShowingGamePicker = false
-    @State private var rulesAndScoringInitialSection: RulesAndScoringView.Section = .rules
+    @State private var rulesAndScoringInitialSection: GameGuideView.Section = .rules
     @State private var isShowingStats = false
     @State private var timeScoringPauseReasons: Set<TimeScoringPauseReason> = []
     @State private var hintHighlightOpacity: Double = 0
@@ -482,7 +482,7 @@ struct ContentView: View {
         return view
             .sheet(isPresented: $isShowingRulesAndScoring) {
                 NavigationStack {
-                    RulesAndScoringView(initialSection: rulesAndScoringInitialSection)
+                    GameGuideView(initialSection: rulesAndScoringInitialSection)
                 }
             }
             .sheet(isPresented: $isShowingStats) {
@@ -1016,7 +1016,7 @@ struct ContentView: View {
         return (viewModel.elapsedActiveSeconds(), viewModel.displayScore())
     }
 
-    private func presentRulesAndScoring(initialSection: RulesAndScoringView.Section = .rules) {
+    private func presentRulesAndScoring(initialSection: GameGuideView.Section = .rules) {
         rulesAndScoringInitialSection = initialSection
         isShowingRulesAndScoring = true
     }
