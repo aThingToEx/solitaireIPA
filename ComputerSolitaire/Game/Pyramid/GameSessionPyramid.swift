@@ -54,6 +54,7 @@ extension SolitaireViewModel {
         applyTimeBonusIfWon()
         self.selection = nil
         SoundManager.shared.play(.cardPlaced)
+        HapticManager.shared.play(.cardPlaced)
         refreshAutoFinishAvailability()
         return true
     }

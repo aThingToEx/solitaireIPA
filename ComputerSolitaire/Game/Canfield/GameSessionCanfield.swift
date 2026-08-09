@@ -108,5 +108,6 @@ extension SolitaireViewModel {
         CanfieldGameRules.refillEmptyPileFromReserve(on: &state, pileIndex: pileIndex)
         applyScore(.reserveToTableau)
         SoundManager.shared.play(.cardPlaced)
+        HapticManager.shared.play(.cardPlaced)
     }
 }
