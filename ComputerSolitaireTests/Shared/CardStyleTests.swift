@@ -3,9 +3,14 @@ import XCTest
 
 @MainActor
 final class CardStyleTests: XCTestCase {
-    func testDefaultStyleIsSimple() {
+    func testDefaultStyleMatchesPlatform() {
+#if os(macOS)
+        XCTAssertEqual(CardStyle.defaultValue, .classic)
+        XCTAssertEqual(CardStyle.defaultValue.rawValue, "classic")
+#else
         XCTAssertEqual(CardStyle.defaultValue, .simple)
         XCTAssertEqual(CardStyle.defaultValue.rawValue, "simple")
+#endif
     }
 
     func testOnlyCurrentRawValuesResolveToStyles() {
