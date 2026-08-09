@@ -102,6 +102,18 @@ nonisolated enum GameVariant: String, CaseIterable, Codable {
         }
     }
 
+    /// Whether the player picks a stock draw mode (1-card or 3-card) when
+    /// dealing. Only Klondike offers the choice; every other variant fixes
+    /// how its stock deals.
+    var hasSelectableDrawMode: Bool {
+        switch self {
+        case .klondike:
+            return true
+        case .freecell, .yukon, .spider, .pyramid, .tripeaks, .golf, .fortyThieves, .scorpion, .canfield:
+            return false
+        }
+    }
+
     /// How many foundation piles the variant plays with. Spider banks its
     /// eight completed King-to-Ace runs in foundations and Scorpion its four,
     /// Forty Thieves builds two foundations per suit from its two decks; the

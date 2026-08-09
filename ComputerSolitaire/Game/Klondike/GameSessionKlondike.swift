@@ -23,7 +23,7 @@ extension SolitaireViewModel {
     }
 
     var supportsDrawMode: Bool {
-        state.variant == .klondike
+        state.variant.hasSelectableDrawMode
     }
 
     func handleKlondikeStockTap() {

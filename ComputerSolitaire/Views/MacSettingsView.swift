@@ -52,7 +52,7 @@ struct MacSettingsView: View {
                 .frame(width: PaneMetrics.width, height: PaneMetrics.appearanceHeight)
             }
             Tab("Rules", systemImage: "book") {
-                RulesAndScoringView(showsDoneButton: false)
+                GameGuideView(showsDoneButton: false)
                     .frame(width: PaneMetrics.width, height: PaneMetrics.rulesHeight)
             }
             Tab("About", systemImage: "info.circle") {

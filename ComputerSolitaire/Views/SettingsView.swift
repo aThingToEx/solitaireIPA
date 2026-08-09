@@ -239,7 +239,7 @@ struct SettingsView: View {
     private var helpSection: some View {
         Section {
             NavigationLink("Rules & Scoring") {
-                RulesAndScoringView(showsDoneButton: false)
+                GameGuideView(showsDoneButton: false)
             }
         } header: {
             Text("Help")
