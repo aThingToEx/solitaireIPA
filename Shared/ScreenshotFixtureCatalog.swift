@@ -4,7 +4,6 @@ struct ScreenshotFixture: Identifiable, Hashable {
     let name: String
     /// Human-readable description of the staged board.
     let title: String
-
     var id: String { name }
 }
 
@@ -12,9 +11,9 @@ struct ScreenshotFixture: Identifiable, Hashable {
 enum ScreenshotFixtureCatalog {
     static let bundled: [ScreenshotFixture] = [
         ScreenshotFixture(name: "klondike-draw3", title: "Klondike – Draw 3"),
+        ScreenshotFixture(name: "spider", title: "Spider – 2 suits"),
         ScreenshotFixture(name: "freecell", title: "FreeCell"),
         ScreenshotFixture(name: "yukon", title: "Yukon"),
-        ScreenshotFixture(name: "spider", title: "Spider – 2 suits"),
         ScreenshotFixture(name: "pyramid", title: "Pyramid"),
         ScreenshotFixture(name: "tripeaks", title: "TriPeaks"),
         ScreenshotFixture(name: "golf", title: "Golf"),
@@ -22,4 +21,11 @@ enum ScreenshotFixtureCatalog {
         ScreenshotFixture(name: "scorpion", title: "Scorpion"),
         ScreenshotFixture(name: "canfield", title: "Canfield")
     ]
+
+    /// The compact store set: the three most recognizable variants.
+    static let top3 = Array(bundled.prefix(3))
+
+    static func fixture(named name: String) -> ScreenshotFixture? {
+        bundled.first { $0.name == name }
+    }
 }

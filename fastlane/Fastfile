@@ -1,80 +1,274 @@
-# Screenshot automation. The full App Store set is one command:
+# App Store screenshot automation.
+#
+# Fast default (one required iPhone + one required iPad, top three games):
 #
 #   fastlane screenshots
 #
-# iPhone/iPad come from `snapshot` (see Snapfile); the Mac window screenshot
-# comes from a custom xcodebuild step because snapshot only supports
-# iOS/tvOS/watchOS simulators. Staged boards live in the app as
-# ScreenshotFixtures; see ScreenshotFixtureTests for regenerating them.
+# Options:
+#
+#   targets:iphone|ipad|ios|mac|all
+#   games:top3|all|klondike-draw3,spider,...
+#   devices:required|all
+#   reuse_build:true|false
+#   card_style:classic|simple|pixel (optional; platform default when omitted)
+#   dark_mode:true|false (default: true)
 
 default_platform(:ios)
 
-# Mac shots land next to the iOS ones in the locale folder with a device-style
-# prefix — the same layout `deliver` uploads from (it keys on pixel size).
-# fastlane chdirs into this fastlane directory for lane execution, so plain
-# Ruby file ops and `sh` both resolve these relative to fastlane/.
-MAC_EXPORT_TMP = "screenshots/mac-export".freeze
-MAC_FINAL_DIR = "screenshots/en-US".freeze
-
-# Shared scheme whose test action contains only ScreenshotCaptureUITests, so
-# screenshot runs never build or run the (macOS-only) unit test suite.
+FASTLANE_DIR = File.expand_path(__dir__).freeze
+PROJECT_PATH = File.expand_path("../ComputerSolitaire.xcodeproj", FASTLANE_DIR).freeze
+SCREENSHOTS_DIR = File.join(FASTLANE_DIR, "screenshots").freeze
+LOCALE_DIR = File.join(SCREENSHOTS_DIR, "en-US").freeze
+IOS_DERIVED_DATA = File.join(FASTLANE_DIR, "derived_data", "ios").freeze
+MAC_DERIVED_DATA = File.join(FASTLANE_DIR, "derived_data", "mac").freeze
+MAC_EXPORT_TMP = File.join(SCREENSHOTS_DIR, "mac-export").freeze
+MAC_RESULT_BUNDLE = File.join(SCREENSHOTS_DIR, "mac.xcresult").freeze
 SCHEME = "ComputerSolitaireScreenshots".freeze
 
+GAME_TESTS = {
+  "klondike-draw3" => "testScreenshot01KlondikeDraw3",
+  "spider" => "testScreenshot02Spider",
+  "freecell" => "testScreenshot03FreeCell",
+  "yukon" => "testScreenshot04Yukon",
+  "pyramid" => "testScreenshot05Pyramid",
+  "tripeaks" => "testScreenshot06TriPeaks",
+  "golf" => "testScreenshot07Golf",
+  "fortythieves" => "testScreenshot08FortyThieves",
+  "scorpion" => "testScreenshot09Scorpion",
+  "canfield" => "testScreenshot10Canfield"
+}.freeze
+TOP3_GAMES = %w[klondike-draw3 spider freecell].freeze
+
+REQUIRED_DEVICES = {
+  iphone: ["iPhone 17 Pro Max"],
+  ipad: ["iPad Pro 13-inch (M5)"]
+}.freeze
+ALL_DEVICES = {
+  iphone: ["iPhone 17 Pro Max", "iPhone 17 Pro"],
+  ipad: ["iPad Pro 13-inch (M5)", "iPad Pro 11-inch (M5)"]
+}.freeze
+
 platform :ios do
-  desc "Capture all App Store screenshots (iPhone, iPad, and Mac)"
-  lane :screenshots do
-    # One iOS build shared by every simulator run (snapshot is configured
-    # with test_without_building against this derived data).
-    run_tests(
-      project: "ComputerSolitaire.xcodeproj",
-      scheme: SCHEME,
-      destination: "generic/platform=iOS Simulator",
-      derived_data_path: "fastlane/derived_data",
-      build_for_testing: true
+  desc "Capture selected App Store screenshots (defaults: iOS, top 3, required devices)"
+  lane :screenshots do |options|
+    configuration = screenshot_configuration(options)
+    selected_tests = test_identifiers(configuration[:games])
+
+    UI.message(
+      "Screenshots: targets=#{configuration[:targets]}, " \
+      "games=#{configuration[:games].join(',')}, " \
+      "devices=#{configuration[:device_scope]}, " \
+      "card_style=#{configuration[:card_style] || 'default'}, " \
+      "dark_mode=#{configuration[:dark_mode]}, " \
+      "reuse_build=#{configuration[:reuse_build]}"
     )
-    snapshot
-    mac_screenshots
+    validate_reusable_builds(configuration) if configuration[:reuse_build]
+    clear_screenshot_output
+
+    unless configuration[:ios_devices].empty?
+      run_ios_screenshot_capture(
+        devices: configuration[:ios_devices],
+        selected_tests: selected_tests,
+        card_style: configuration[:card_style],
+        dark_mode: configuration[:dark_mode],
+        reuse_build: configuration[:reuse_build]
+      )
+    end
+
+    if configuration[:include_mac]
+      run_mac_screenshot_capture(
+        selected_tests: selected_tests,
+        card_style: configuration[:card_style],
+        dark_mode: configuration[:dark_mode],
+        reuse_build: configuration[:reuse_build]
+      )
+    end
+
+    UI.success("Screenshots saved to #{LOCALE_DIR}")
   end
 
-  desc "Capture the Mac window screenshot via xcodebuild"
-  private_lane :mac_screenshots do
-    # The UI test can't terminate an app instance it didn't spawn (e.g. one
-    # left running from Xcode), so quit it first — gracefully, then harder.
-    # Gated on the app actually running: an unconditional quit AppleEvent can
-    # linger and get delivered to the instance the test launches later,
-    # quitting it mid-capture. An instance *paused in Xcode's debugger* can't
-    # be killed at all (the kernel defers signals for traced processes); if
-    # this leg fails with "Failed to terminate", hit Stop in Xcode and rerun.
+  private_lane :run_ios_screenshot_capture do |options|
+    unless options[:reuse_build]
+      run_tests(
+        project: PROJECT_PATH,
+        scheme: SCHEME,
+        destination: "generic/platform=iOS Simulator",
+        derived_data_path: IOS_DERIVED_DATA,
+        build_for_testing: true,
+        only_testing: options[:selected_tests]
+      )
+    end
+    require_test_build!(IOS_DERIVED_DATA, "iOS")
+
+    snapshot(
+      project: PROJECT_PATH,
+      scheme: SCHEME,
+      devices: options[:devices],
+      languages: ["en-US"],
+      output_directory: SCREENSHOTS_DIR,
+      derived_data_path: IOS_DERIVED_DATA,
+      test_without_building: true,
+      only_testing: options[:selected_tests],
+      launch_arguments: options[:card_style] ? ["-screenshotCardStyle #{options[:card_style]}"] : [""],
+      dark_mode: options[:dark_mode],
+      clear_previous_screenshots: false,
+      skip_package_dependencies_resolution: true,
+      headless: true,
+      skip_open_summary: true,
+      number_of_retries: 0,
+      stop_after_first_error: true
+    )
+  end
+
+  # Selecting targets:mac or targets:all is the explicit authorization for
+  # this visible capture. macOS is never included by default.
+  private_lane :run_mac_screenshot_capture do |options|
+    unless options[:reuse_build]
+      sh(
+        "xcodebuild", "build-for-testing",
+        "-project", PROJECT_PATH,
+        "-scheme", SCHEME,
+        "-destination", "platform=macOS",
+        "-derivedDataPath", MAC_DERIVED_DATA,
+        "-quiet"
+      )
+    end
+    require_test_build!(MAC_DERIVED_DATA, "macOS")
+
+    # A previously launched copy prevents the UI test from owning the window.
     if system("pgrep -xq 'Computer Solitaire'")
       sh(%q(osascript -e 'with timeout of 3 seconds' -e 'quit app "Computer Solitaire"' -e 'end timeout' 2>/dev/null || true))
       sh(%q(pkill -x "Computer Solitaire" 2>/dev/null || true; sleep 1; pkill -9 -x "Computer Solitaire" 2>/dev/null || true))
     end
 
-    result_bundle = "screenshots/mac.xcresult"
-    FileUtils.rm_rf([MAC_EXPORT_TMP, result_bundle])
-    FileUtils.mkdir_p([MAC_EXPORT_TMP, MAC_FINAL_DIR])
+    FileUtils.rm_rf([MAC_EXPORT_TMP, MAC_RESULT_BUNDLE])
+    FileUtils.mkdir_p([MAC_EXPORT_TMP, LOCALE_DIR])
 
-    sh("xcodebuild", "test",
-       "-project", "../ComputerSolitaire.xcodeproj",
-       "-scheme", SCHEME,
-       "-destination", "platform=macOS",
-       "-resultBundlePath", result_bundle,
-       "-quiet")
-    sh("xcrun", "xcresulttool", "export", "attachments",
-       "--path", result_bundle, "--output-path", MAC_EXPORT_TMP)
+    test_command = [
+      "env",
+      "TEST_RUNNER_SCREENSHOT_CARD_STYLE=#{options[:card_style]}",
+      "TEST_RUNNER_SCREENSHOT_DARK_MODE=#{options[:dark_mode]}",
+      "xcodebuild", "test-without-building",
+      "-project", PROJECT_PATH,
+      "-scheme", SCHEME,
+      "-destination", "platform=macOS",
+      "-derivedDataPath", MAC_DERIVED_DATA,
+      "-resultBundlePath", MAC_RESULT_BUNDLE,
+      "-quiet"
+    ]
+    options[:selected_tests].each do |test|
+      test_command << "-only-testing:#{test}"
+    end
+    sh(*test_command)
 
+    sh(
+      "xcrun", "xcresulttool", "export", "attachments",
+      "--path", MAC_RESULT_BUNDLE,
+      "--output-path", MAC_EXPORT_TMP
+    )
     rename_exported_attachments(MAC_EXPORT_TMP)
     Dir.glob(File.join(MAC_EXPORT_TMP, "*.png")).each do |png|
-      FileUtils.mv(png, File.join(MAC_FINAL_DIR, "macOS-#{File.basename(png)}"))
+      FileUtils.mv(png, File.join(LOCALE_DIR, "macOS-#{File.basename(png)}"))
     end
-    FileUtils.rm_rf([MAC_EXPORT_TMP, result_bundle])
-    UI.success("Mac screenshots in fastlane/#{MAC_FINAL_DIR}")
+    FileUtils.rm_rf([MAC_EXPORT_TMP, MAC_RESULT_BUNDLE])
   end
 end
 
-# xcresulttool exports opaque file names; the manifest maps them back to the
-# attachment names the UI test set (board names, plus an index/UUID suffix
-# this strips). Non-PNG attachments are runner diagnostics — dropped.
+def screenshot_configuration(options)
+  targets = (options[:targets] || "ios").to_s.downcase
+  unless %w[iphone ipad ios mac all].include?(targets)
+    UI.user_error!("targets must be one of: iphone, ipad, ios, mac, all")
+  end
+
+  device_scope = (options[:devices] || "required").to_s.downcase
+  unless %w[required all].include?(device_scope)
+    UI.user_error!("devices must be either required or all")
+  end
+
+  device_catalog = device_scope == "all" ? ALL_DEVICES : REQUIRED_DEVICES
+  ios_devices = []
+  ios_devices.concat(device_catalog[:iphone]) if %w[iphone ios all].include?(targets)
+  ios_devices.concat(device_catalog[:ipad]) if %w[ipad ios all].include?(targets)
+
+  {
+    targets: targets,
+    games: parse_games(options[:games] || "top3"),
+    device_scope: device_scope,
+    reuse_build: parse_boolean(options[:reuse_build], default: false),
+    card_style: parse_card_style(options[:card_style]),
+    dark_mode: parse_boolean(options[:dark_mode], default: true),
+    ios_devices: ios_devices,
+    include_mac: %w[mac all].include?(targets)
+  }
+end
+
+def parse_card_style(value)
+  return nil if value.nil? || value.to_s.empty?
+
+  card_style = value.to_s.downcase
+  unless %w[classic simple pixel].include?(card_style)
+    UI.user_error!("card_style must be one of: classic, simple, pixel")
+  end
+  card_style
+end
+
+def parse_games(value)
+  selection = value.to_s.downcase
+  games = case selection
+          when "top3" then TOP3_GAMES
+          when "all" then GAME_TESTS.keys
+          else selection.split(",").map(&:strip).reject(&:empty?)
+          end
+  UI.user_error!("games must not be empty") if games.empty?
+
+  unknown = games.uniq - GAME_TESTS.keys
+  unless unknown.empty?
+    UI.user_error!(
+      "unknown games: #{unknown.join(', ')}. Valid names: #{GAME_TESTS.keys.join(', ')}"
+    )
+  end
+  games.uniq
+end
+
+def parse_boolean(value, default:)
+  return default if value.nil?
+  return value if value == true || value == false
+
+  case value.to_s.downcase
+  when "true" then true
+  when "false" then false
+  else UI.user_error!("reuse_build must be true or false")
+  end
+end
+
+def test_identifiers(games)
+  games.map do |game|
+    "ComputerSolitaireUITests/ScreenshotCaptureUITests/#{GAME_TESTS.fetch(game)}"
+  end
+end
+
+def require_test_build!(derived_data_path, platform_name)
+  builds = Dir.glob(File.join(derived_data_path, "Build", "Products", "*.xctestrun"))
+  return unless builds.empty?
+
+  UI.user_error!(
+    "No reusable #{platform_name} screenshot build exists at #{derived_data_path}. " \
+    "Run once with reuse_build:false."
+  )
+end
+
+def validate_reusable_builds(configuration)
+  require_test_build!(IOS_DERIVED_DATA, "iOS") unless configuration[:ios_devices].empty?
+  require_test_build!(MAC_DERIVED_DATA, "macOS") if configuration[:include_mac]
+end
+
+def clear_screenshot_output
+  FileUtils.rm_rf(LOCALE_DIR)
+  FileUtils.mkdir_p(LOCALE_DIR)
+end
+
+# xcresulttool exports opaque names. Restore the attachment names assigned by
+# ScreenshotCaptureUITests and discard non-PNG runner diagnostics.
 def rename_exported_attachments(export_dir)
   manifest_path = File.join(export_dir, "manifest.json")
   return unless File.exist?(manifest_path)
