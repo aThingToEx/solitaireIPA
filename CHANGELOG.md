@@ -11,9 +11,10 @@
 - Changed the default card style from Classic to Simple on iOS and iPadOS (macOS keeps Classic). ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89), [#93](https://github.com/austin-smith/ComputerSolitaire/pull/93))
 - Softened the Simple card face from pure white to a subtle cream. ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89))
 - Updated face cards in the Simple style to show their suit symbol instead of an image. ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89))
-- Imrpoved layout and text on Simple card style. ([#93](https://github.com/austin-smith/ComputerSolitaire/pull/93))
+- Improved layout and text on Simple card style. ([#93](https://github.com/austin-smith/ComputerSolitaire/pull/93))
 - Redesigned the Pixel card style with redrawn face cards and a new card back. ([#84](https://github.com/austin-smith/ComputerSolitaire/pull/84), [#88](https://github.com/austin-smith/ComputerSolitaire/pull/88))
 - Overhauled the rules and scoring guide and fixed incorrect scoring details. ([#92](https://github.com/austin-smith/ComputerSolitaire/pull/92))
+- Expanded haptic feedback to more actions. ([#95](https://github.com/austin-smith/ComputerSolitaire/pull/95))
 
 ### Fixed
 
