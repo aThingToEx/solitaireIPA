@@ -75,8 +75,10 @@ struct SoundSettingsRows: View {
         Toggle("Sound effects", isOn: $isSoundEffectsEnabled)
             .toggleStyle(.switch)
 #if os(iOS)
-        Toggle("Haptic feedback", isOn: $isHapticFeedbackEnabled)
-            .toggleStyle(.switch)
+        if HapticManager.deviceSupportsHaptics {
+            Toggle("Haptic feedback", isOn: $isHapticFeedbackEnabled)
+                .toggleStyle(.switch)
+        }
 #endif
     }
 }
@@ -224,7 +226,7 @@ struct SettingsView: View {
         Section {
             SoundSettingsRows()
         } header: {
-            Text("Sound & Haptics")
+            Text(HapticManager.deviceSupportsHaptics ? "Sound & Haptics" : "Sound")
         }
     }
 

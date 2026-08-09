@@ -65,6 +65,6 @@ extension SolitaireViewModel {
             applyScore(.spiderCompletedRun)
         }
         SoundManager.shared.play(.cardPlaced)
-        HapticManager.shared.play(.cardFlipFaceUp)
+        HapticManager.shared.play(.runCompleted)
     }
 }

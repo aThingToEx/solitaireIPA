@@ -199,7 +199,7 @@ final class SolitaireViewModel {
         hintWiggleToken = UUID()
         scheduleHintAutoClear(for: hint)
         hintRequestsInCurrentGame += 1
-        HapticManager.shared.play(.settingsSelection)
+        HapticManager.shared.play(.hintFound)
     }
 
     func clearHint() {
@@ -374,6 +374,9 @@ final class SolitaireViewModel {
         isDragging = false
         pendingAutoMove = nil
         SoundManager.shared.play(.undoMove)
+        // Here rather than the view's undo-animation path, so every undo
+        // entry point buzzes.
+        HapticManager.shared.play(.undoMove)
         refreshAutoFinishAvailability()
     }
 
@@ -956,6 +959,7 @@ extension SolitaireViewModel {
             applyTimeBonusIfWon()
             self.selection = nil
             SoundManager.shared.play(.cardPlaced)
+            HapticManager.shared.play(.cardPlaced)
             refreshAutoFinishAvailability()
             return true
 
@@ -980,6 +984,7 @@ extension SolitaireViewModel {
             applyTimeBonusIfWon()
             self.selection = nil
             SoundManager.shared.play(.cardPlaced)
+            HapticManager.shared.play(.cardPlaced)
             refreshAutoFinishAvailability()
             return true
 
@@ -999,6 +1004,7 @@ extension SolitaireViewModel {
             applyTimeBonusIfWon()
             self.selection = nil
             SoundManager.shared.play(.cardPlaced)
+            HapticManager.shared.play(.cardPlaced)
             refreshAutoFinishAvailability()
             return true
 
