@@ -78,7 +78,7 @@ struct GameMenuCommands: Commands {
             Button {
                 actions?.redeal()
             } label: {
-                Label("Redeal", systemImage: "arrow.clockwise")
+                Label("Restart", systemImage: "arrow.clockwise")
             }
             .disabled(!(state?.canRedeal ?? false))
 
