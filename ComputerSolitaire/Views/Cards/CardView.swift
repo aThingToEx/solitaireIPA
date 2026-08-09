@@ -17,7 +17,7 @@ enum CardStyle: String, CaseIterable, Identifiable {
     case simple
     case pixel
 
-    static let defaultValue: CardStyle = .classic
+    static let defaultValue: CardStyle = .simple
 
     var id: String { rawValue }
 
