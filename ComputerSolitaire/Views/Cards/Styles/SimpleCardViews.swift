@@ -9,7 +9,7 @@ enum SimpleCardStyle {
 }
 
 private enum SimplePalette {
-    static let face = Color.white
+    static let face = Color(red: 1.0, green: 0.989, blue: 0.958)
     static let red = Color(red: 0.80, green: 0.12, blue: 0.16)
     static let black = Color(red: 0.10, green: 0.10, blue: 0.12)
     static let backTrim = Color.white.opacity(0.7)
