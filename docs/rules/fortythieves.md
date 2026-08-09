@@ -48,7 +48,7 @@ Where the linked sources offer relaxations, this implementation uses:
 - **Build down by suit**, not by alternating colors. This is the strict classic rule — color building is a different, much easier game.
 - **Any card fills an empty column** (universal across sources), and columns have no depth limit.
 - **Locked foundations.** A banked card never returns to play. Klondike-style rollbacks would soften the game's defining irreversibility.
-- **Single pass** through the stock with no recycles (universal across sources — the pass limit is the game). The in-app **Redeal** command replays the same deal from the start — a fresh attempt at the layout, not a recycle of the stock.
+- **Single pass** through the stock with no recycles (universal across sources — the pass limit is the game). The in-app **Restart** command returns the same deal to its starting layout — a fresh attempt, not a recycle of the stock.
 
 ## Sources
 - https://en.wikipedia.org/wiki/Napoleon_at_St_Helena

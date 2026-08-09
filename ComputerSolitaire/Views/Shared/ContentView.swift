@@ -309,7 +309,7 @@ struct ContentView: View {
                                 Button("New Game", systemImage: "plus") {
                                     startNewGameFromUI()
                                 }
-                                Button("Redeal", systemImage: "arrow.clockwise") {
+                                Button("Restart", systemImage: "arrow.clockwise") {
                                     redealFromUI()
                                 }
                                 .disabled(!viewModel.canRedeal)
@@ -412,7 +412,7 @@ struct ContentView: View {
                         Button("New Game", systemImage: "plus") {
                             startNewGameFromUI()
                         }
-                        Button("Redeal", systemImage: "arrow.clockwise") {
+                        Button("Restart", systemImage: "arrow.clockwise") {
                             redealFromUI()
                         }
                         .disabled(!viewModel.canRedeal)
@@ -420,7 +420,7 @@ struct ContentView: View {
                         Label("New Game", systemImage: "plus")
                     }
                     .labelStyle(.iconOnly)
-                    .help("New Game or Redeal")
+                    .help("New Game or Restart")
                 }
                 ToolbarSpacer(.fixed)
                 ToolbarItemGroup(placement: .primaryAction) {

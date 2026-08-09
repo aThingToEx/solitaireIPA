@@ -56,7 +56,7 @@ The classic sources are unusually consistent for a patience game. The choices he
 - **Wrapping in both directions.** Foundations turn King-to-Ace and tableau builds turn Ace-to-King. Both are definitional: with a random base rank, the cards just below it would otherwise be nearly unplayable.
 - **Compulsory reserve fill.** A space takes the reserve's top card at once, not at the player's option. Choice enters only after the reserve is out, when the top waste card may fill a space (and nothing else may — not even another tableau pile).
 - **Locked foundations.** A banked card never returns to play. No classic source permits "worrying back", though some apps offer it as a house option.
-- **Draw three with unlimited redeals.** This is universal across the classic sources. Deal-one variants exist (Rainbow) but are a different, far easier game. The in-app **Redeal** command replays the same deal from the start — a fresh attempt at the layout, not the stock recycle, which is unlimited and free.
+- **Draw three with unlimited redeals.** This is universal across the classic sources. Deal-one variants exist (Rainbow) but are a different, far easier game. The in-app **Restart** command returns the same deal to its starting layout — a fresh attempt, not a stock recycle, which is unlimited and free.
 
 ## Sources
 - https://en.wikipedia.org/wiki/Canfield_(solitaire)

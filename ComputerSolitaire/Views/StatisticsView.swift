@@ -444,7 +444,7 @@ private struct GameStatisticsDetailView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Clean Wins info")
             .popover(isPresented: $isShowingCleanWinsInfo, arrowEdge: .top) {
-                Text("Wins completed without the use of hints, undos, or redeals.")
+                Text("Wins completed without the use of hints, undos, or restarts.")
                     .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 280, alignment: .leading)
