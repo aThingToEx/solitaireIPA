@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.0 - 2026-08-08
+
+### Added
+
+- New deals are now animated. Starting a game, redealing, or switching games sweeps the old cards off the screen and deals new cards one at a time from the stock. Both animations respect the Animation Speed setting and Reduce Motion. ([#83](https://github.com/austin-smith/ComputerSolitaire/pull/83))
+
+### Changed
+
+- Changed the default card style from Classic to Simple on iOS and iPadOS (macOS keeps Classic). ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89), [#93](https://github.com/austin-smith/ComputerSolitaire/pull/93))
+- Softened the Simple card face from pure white to a subtle cream. ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89))
+- Updated face cards in the Simple style to show their suit symbol instead of an image. ([#89](https://github.com/austin-smith/ComputerSolitaire/pull/89))
+- Improved layout and text on Simple card style. ([#93](https://github.com/austin-smith/ComputerSolitaire/pull/93))
+- Redesigned the Pixel card style with redrawn face cards and a new card back. ([#84](https://github.com/austin-smith/ComputerSolitaire/pull/84), [#88](https://github.com/austin-smith/ComputerSolitaire/pull/88))
+- Overhauled the rules and scoring guide and fixed incorrect scoring details. ([#92](https://github.com/austin-smith/ComputerSolitaire/pull/92))
+- Expanded haptic feedback to more actions. ([#95](https://github.com/austin-smith/ComputerSolitaire/pull/95))
+
+### Fixed
+
+- Tapping outside the game picker on iOS now dismisses it, including taps near the top and bottom edges of the screen. The bottom toolbar hides while the picker is open. ([#79](https://github.com/austin-smith/ComputerSolitaire/pull/79), [#86](https://github.com/austin-smith/ComputerSolitaire/pull/86))
+- The iOS bottom toolbar no longer disappears and reappears on each stock draw. ([#86](https://github.com/austin-smith/ComputerSolitaire/pull/86))
+
+**Full Changelog**: https://github.com/austin-smith/ComputerSolitaire/compare/v0.8.3...v0.9.0
+
 ## 0.8.3 - 2026-07-15
 
 ### Added
