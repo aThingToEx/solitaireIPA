@@ -60,12 +60,14 @@ struct SimpleCardFrontView: View {
         ZStack {
             SimpleCardBase(fill: SimplePalette.face, chrome: chrome)
 
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
                 Text(card.rank.label)
-                    .font(.custom("Charter-Bold", size: cardSize.width * 0.27))
+                    .font(.system(size: cardSize.width * 0.35, weight: .semibold, design: .serif))
+                    .fontWidth(.condensed)
                 Spacer(minLength: 0)
                 Image(systemName: card.suit.symbolName)
                     .font(.system(size: cardSize.width * 0.22, weight: .semibold))
+                    .offset(y: cardSize.width * 0.055)
                     .accessibilityHidden(true)
             }
             .foregroundStyle(inkColor)
