@@ -34,7 +34,7 @@ Rank order runs Ace, 2 … 10, Jack, Queen, King, and does **not** wrap: an Ace 
 - Clearing the board subtracts one point per stock card left, so scores below zero are the best results.
 - There is no time bonus — strokes are the whole score.
 - A match is nine consecutive holes. The totals sum, and par for the match is 45.
-- **New Game** abandons the match and starts a fresh one at hole 1. **Redeal** replays the current hole. Switching games keeps the match — every game's session is stashed, and Golf resumes where it left off.
+- **New Game** abandons the match and starts a fresh one at hole 1. **Restart** returns the current hole to its starting layout. Switching games keeps the match — every game's session is stashed, and Golf resumes where it left off.
 
 ## Winning
 You win a hole the moment the last column card is played, regardless of the stock and waste. Most holes are not winnable under strict rules (that is the classic game), so the match score is the real contest: clear what the deal allows and beat par across nine holes.
