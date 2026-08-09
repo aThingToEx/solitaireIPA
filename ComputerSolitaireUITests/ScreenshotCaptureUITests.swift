@@ -6,24 +6,20 @@ import UIKit
 import AppKit
 #endif
 
-/// Captures App Store screenshots: launches the app once per staged board
-/// (see `ScreenshotFixtures` in the app target) and captures the screen.
-/// Run `fastlane screenshots` to drive this across every device size; images
-/// land in `fastlane/screenshots/`. On iOS runs fastlane's `snapshot()` does
-/// the capture; the macOS leg (which snapshot doesn't support) runs this same
-/// test via xcodebuild and collects the attachment instead.
+/// Captures one App Store screenshot per test so Fastlane can select exactly
+/// the requested games with XCTest's `only-testing` support.
 final class ScreenshotCaptureUITests: XCTestCase {
-    /// One board per App Store screenshot, in store order. The catalog source
-    /// is compiled into both targets because UI tests cannot import the app.
-    private static let boards = ScreenshotFixtureCatalog.bundled.map(\.name)
-
-    /// Appearance for every screenshot, pinned via UserDefaults launch
-    /// arguments so simulator state can't change the look between runs.
-    private static let appearance = [
-        "-settings.tableBackgroundColor", "#5B9A9A",
-        "-settings.cardStyle", "classic",
-        "-settings.feltEffectEnabled", "YES"
-    ]
+    // Keep these method names aligned with GAME_TESTS in fastlane/Fastfile.
+    @MainActor func testScreenshot01KlondikeDraw3() throws { try capture("klondike-draw3") }
+    @MainActor func testScreenshot02Spider() throws { try capture("spider") }
+    @MainActor func testScreenshot03FreeCell() throws { try capture("freecell") }
+    @MainActor func testScreenshot04Yukon() throws { try capture("yukon") }
+    @MainActor func testScreenshot05Pyramid() throws { try capture("pyramid") }
+    @MainActor func testScreenshot06TriPeaks() throws { try capture("tripeaks") }
+    @MainActor func testScreenshot07Golf() throws { try capture("golf") }
+    @MainActor func testScreenshot08FortyThieves() throws { try capture("fortythieves") }
+    @MainActor func testScreenshot09Scorpion() throws { try capture("scorpion") }
+    @MainActor func testScreenshot10Canfield() throws { try capture("canfield") }
 
 #if os(macOS)
     /// Full window size in points — title bar and toolbar included, since
@@ -31,58 +27,113 @@ final class ScreenshotCaptureUITests: XCTestCase {
     /// On a 2x display the capture comes out at 2880x1800 pixels — an exact
     /// Mac App Store screenshot size.
     private static let windowSize = CGSize(width: 1440, height: 900)
+
+    /// XCTest creates a fresh test-case instance per method, so cache the
+    /// one window-frame probe across the selected macOS screenshots.
+    @MainActor private static var cachedMacContentSize: CGSize?
 #endif
 
     @MainActor
-    func testCaptureScreenshots() throws {
-#if os(macOS)
-        // The app pins its *content* size (pure SwiftUI; the app target has
-        // no AppKit), but the capture needs the *window* to be exactly
-        // `windowSize`. Probe once to measure the title-bar height, then pin
-        // the content that much shorter for the real captures.
-        let titleBarHeight = try measureTitleBarHeight()
-        let contentSize = CGSize(
-            width: Self.windowSize.width,
-            height: Self.windowSize.height - titleBarHeight
+    private func capture(_ fixtureName: String) throws {
+        let fixture = try XCTUnwrap(
+            ScreenshotFixtureCatalog.fixture(named: fixtureName),
+            "unknown screenshot fixture: \(fixtureName)"
         )
-#endif
-        for board in Self.boards {
-            let app = XCUIApplication()
+        let app = XCUIApplication()
 #if os(macOS)
-            // Ignore any persisted window state so the app-side pin always wins.
-            app.launchArguments += [
-                "-screenshotWindowSize",
-                "\(Int(contentSize.width))x\(Int(contentSize.height))",
-                "-ApplePersistenceIgnoreState", "YES"
-            ]
+        let contentSize = try macContentSize()
+        // Ignore persisted window state so the app-side pin always wins.
+        app.launchArguments += [
+            "-screenshotWindowSize",
+            "\(Int(contentSize.width))x\(Int(contentSize.height))",
+            "-ApplePersistenceIgnoreState", "YES"
+        ]
 #else
-            setupSnapshot(app)
-            // iPad ships landscape App Store screenshots (solitaire is played
-            // landscape there); iPhone is portrait-only.
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                XCUIDevice.shared.orientation = .landscapeLeft
-            }
+        // The explicit settle below is the only animation wait. Disabling the
+        // helper's extra delay and idle polling saves a second per screenshot.
+        setupSnapshot(app, waitForAnimations: false)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCUIDevice.shared.orientation = .landscapeLeft
+        }
 #endif
-            app.launchArguments += Self.appearance + ["-screenshotFixture", board]
-            app.launch()
-            XCTAssertTrue(
-                app.windows.firstMatch.waitForExistence(timeout: 10),
-                "\(board): app window never appeared"
-            )
-            // Let load animations and the initial layout settle.
-            Thread.sleep(forTimeInterval: 2)
+        let requestedCardStyle = Self.requestedCardStyle(in: app.launchArguments)
+        app.launchArguments += Self.appearance(cardStyle: requestedCardStyle)
+        app.launchArguments += Self.interfaceStyleArguments
+        app.launchArguments += ["-screenshotFixture", fixture.name]
+        app.launch()
+        XCTAssertTrue(
+            app.windows.firstMatch.waitForExistence(timeout: 10),
+            "\(fixture.name): app window never appeared"
+        )
+        Thread.sleep(forTimeInterval: 2)
 
 #if os(macOS)
-            try captureMacWindow(of: app, named: board)
+        try captureMacWindow(of: app, named: fixture.name)
 #else
-            snapshot(board)
+        snapshot(fixture.name, timeWaitingForIdle: 0)
 #endif
-            // No explicit terminate: launch() relaunches a running app, and the
-            // session tears down the last instance. terminate() flakes on macOS.
+    }
+
+    /// Pin every visible preference, while keeping the product's real platform
+    /// defaults: Simple cards on iOS/iPadOS and Classic cards on macOS.
+    private static func appearance(cardStyle requestedCardStyle: String?) -> [String] {
+        let defaultCardStyle: String
+#if os(macOS)
+        defaultCardStyle = "classic"
+#else
+        defaultCardStyle = "simple"
+#endif
+
+        return [
+            "-settings.tableBackgroundColor", "#5B9A9A",
+            "-settings.cardStyle", requestedCardStyle ?? defaultCardStyle,
+            "-settings.cardBackColor", "navy",
+            "-settings.cardTiltEnabled", "YES",
+            "-settings.feltEffectEnabled", "YES"
+        ]
+    }
+
+    /// iOS receives the option through Snapshot's app launch arguments;
+    /// macOS receives it through the xcodebuild test-runner environment.
+    private static func requestedCardStyle(in launchArguments: [String]) -> String? {
+#if os(macOS)
+        if let environmentValue = ProcessInfo.processInfo.environment["SCREENSHOT_CARD_STYLE"],
+           !environmentValue.isEmpty {
+            return environmentValue
         }
+#endif
+        guard let flagIndex = launchArguments.lastIndex(of: "-screenshotCardStyle") else {
+            return nil
+        }
+        let valueIndex = launchArguments.index(after: flagIndex)
+        guard launchArguments.indices.contains(valueIndex) else { return nil }
+        return launchArguments[valueIndex]
+    }
+
+    private static var interfaceStyleArguments: [String] {
+#if os(macOS)
+        let isDarkMode = ProcessInfo.processInfo.environment["SCREENSHOT_DARK_MODE"] != "false"
+        return ["-AppleInterfaceStyle", isDarkMode ? "Dark" : "Light"]
+#else
+        return []
+#endif
     }
 
 #if os(macOS)
+    @MainActor
+    private func macContentSize() throws -> CGSize {
+        if let cached = Self.cachedMacContentSize {
+            return cached
+        }
+        let titleBarHeight = try measureTitleBarHeight()
+        let size = CGSize(
+            width: Self.windowSize.width,
+            height: Self.windowSize.height - titleBarHeight
+        )
+        Self.cachedMacContentSize = size
+        return size
+    }
+
     /// Measures the window title-bar height: launches the app with its
     /// content pinned to the reference size and returns how much taller the
     /// window frame is. The probe instance is replaced by the next launch.
@@ -93,8 +144,12 @@ final class ScreenshotCaptureUITests: XCTestCase {
             "-screenshotWindowSize",
             "\(Int(Self.windowSize.width))x\(Int(Self.windowSize.height))",
             "-ApplePersistenceIgnoreState", "YES",
-            "-screenshotFixture", Self.boards[0]
+            "-screenshotFixture", ScreenshotFixtureCatalog.top3[0].name
         ]
+        probe.launchArguments += Self.appearance(
+            cardStyle: Self.requestedCardStyle(in: probe.launchArguments)
+        )
+        probe.launchArguments += Self.interfaceStyleArguments
         probe.launch()
         let window = probe.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10), "probe window never appeared")
