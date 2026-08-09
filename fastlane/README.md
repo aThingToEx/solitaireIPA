@@ -21,7 +21,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 [bundle exec] fastlane ios screenshots
 ```
 
-Capture all App Store screenshots (iPhone, iPad, and Mac)
+Capture selected App Store screenshots (defaults: iOS, top 3, required devices)
 
 ----
 
