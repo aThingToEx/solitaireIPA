@@ -141,6 +141,8 @@ struct ContentView: View {
     @State private var previousStockCount: Int = 0
     @State private var hasLoadedGame = false
     @State private var isHydratingGame = false
+    /// Outlives `isHydratingGame` by one tick, covering `onChange` observers.
+    @State private var isSettlingHydratedGame = false
     // True while a screenshot board is on screen; suppresses autosave so the
     // staged game never overwrites the real one. Only set in DEBUG builds.
     @State private var isScreenshotSession = false
@@ -822,7 +824,7 @@ struct ContentView: View {
             refreshLoadedWinPresentationIfNeeded()
         }
         .onChange(of: viewModel.isWin) { _, isWin in
-            guard !isHydratingGame else { return }
+            guard !isHydratingGame, !isSettlingHydratedGame else { return }
             if isWin {
                 HapticManager.shared.play(.gameWon)
                 if isReduceMotionEnabled {
@@ -850,11 +852,11 @@ struct ContentView: View {
             presentSettledCelebration()
         }
         .onChange(of: viewModel.isGolfHoleDead) { _, isDead in
-            guard !isHydratingGame, isDead else { return }
+            guard !isHydratingGame, !isSettlingHydratedGame, isDead else { return }
             HapticManager.shared.play(.golfHoleDead)
         }
         .onChange(of: viewModel.golfMatch.isComplete) { _, isComplete in
-            guard !isHydratingGame, isComplete else { return }
+            guard !isHydratingGame, !isSettlingHydratedGame, isComplete else { return }
             // A finished match is Golf's win.
             HapticManager.shared.play(.gameWon)
         }
@@ -1249,6 +1251,7 @@ struct ContentView: View {
         winCelebration.reset(to: .idle)
         resetTransientBoardState()
         isHydratingGame = true
+        isSettlingHydratedGame = true
         isScreenshotSession = false
         let payload = GamePersistence.load(mode: mode, from: modelContext)
         viewModel.activateGame(mode, restoringFrom: payload)
@@ -1265,6 +1268,9 @@ struct ContentView: View {
         previousStockCount = viewModel.state.stock.count
         isHydratingGame = false
         persistGameNow()
+        Task { @MainActor in
+            isSettlingHydratedGame = false
+        }
     }
 
     /// Clears in-flight drag/drop/undo/draw animation state so stale animation
@@ -2092,10 +2098,14 @@ struct ContentView: View {
         guard !hasLoadedGame else { return }
         hasLoadedGame = true
         isHydratingGame = true
+        isSettlingHydratedGame = true
         defer {
             isHydratingGame = false
             previousWasteCount = viewModel.state.waste.count
             previousStockCount = viewModel.state.stock.count
+            Task { @MainActor in
+                isSettlingHydratedGame = false
+            }
         }
 
         let migratedCurrentMode = GamePersistence.migrateLegacyRecordsIfNeeded(in: modelContext)
