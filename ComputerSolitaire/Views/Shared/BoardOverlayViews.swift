@@ -138,30 +138,82 @@ struct UndoOverlayView: View {
     }
 }
 
+/// The falling-cards celebration, rendered as a single Canvas: a TimelineView
+/// supplies the display's frame clock, the renderer advances the physics by
+/// the real elapsed time, and each card face resolves once as a Canvas symbol
+/// that gets stamped with a per-frame transform. One view invalidation and
+/// one draw pass per frame — never 52 live card views each dragging their own
+/// shadow blur through the compositor.
 struct WinCascadeOverlayView: View {
-    /// The cascade task mutates `cards` every frame while cards fly; reading
-    /// it here — not in ContentView — keeps the per-tick re-render confined
-    /// to this overlay.
     let winCelebration: WinCelebrationController
 
     var body: some View {
-        ForEach(winCelebration.cards) { item in
-            let isVisible = item.elapsed >= item.activationDelay
-            CardView(
-                card: item.card,
-                isSelected: false,
-                cardSize: item.size,
-                isCardTiltEnabled: false,
-                cardTilts: .constant([:]),
-                isAccessibilityElement: false
-            )
-            .rotationEffect(.degrees(item.rotationDegrees))
-            .position(item.position)
-            .opacity(isVisible ? 1 : 0)
-            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+        Group {
+            switch winCelebration.phase {
+            case .idle:
+                EmptyView()
+            case .animating:
+                TimelineView(.animation) { timeline in
+                    cascadeCanvas(tickDate: timeline.date)
+                }
+            case .completed:
+                // The settled pile, static: redraws only when the controller
+                // publishes new launch states (relaunch into a won game).
+                cascadeCanvas(tickDate: nil)
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    /// A `tickDate` advances the simulation before drawing; nil draws the
+    /// states as they stand. The canvas fills the overlay, so its size is the
+    /// live board viewport — the physics bounds track window resizes.
+    private func cascadeCanvas(tickDate: Date?) -> some View {
+        Canvas { context, size in
+            if let tickDate {
+                winCelebration.tick(
+                    at: tickDate,
+                    boardBounds: CGRect(origin: .zero, size: size)
+                )
+            }
+
+            var resolved: [(state: WinCascadeCardState, symbol: GraphicsContext.ResolvedSymbol)] = []
+            resolved.reserveCapacity(winCelebration.cards.count)
+            for item in winCelebration.cards where item.elapsed >= item.activationDelay {
+                if let symbol = context.resolveSymbol(id: item.id) {
+                    resolved.append((item, symbol))
+                }
+            }
+            guard !resolved.isEmpty else { return }
+
+            for (state, symbol) in resolved {
+                var cardContext = context
+                cardContext.translateBy(x: state.position.x, y: state.position.y)
+                cardContext.rotate(by: .degrees(state.rotationDegrees))
+                cardContext.draw(symbol, at: .zero)
+            }
+        } symbols: {
+            // Faces and sizes are fixed for the cascade's lifetime, so each
+            // card view resolves to a texture once and is stamped thereafter.
+            // No added drop shadow: the card artwork's own chrome shadow is
+            // all a resting card has, and the overlay copies must match it so
+            // launch doesn't pop an extra shadow on. The padding keeps that
+            // built-in shadow inside the rasterized bounds; being symmetric,
+            // it leaves the card centered so stamping stays position-exact.
+            ForEach(winCelebration.launchStates) { item in
+                CardView(
+                    card: item.card,
+                    isSelected: false,
+                    cardSize: item.size,
+                    isCardTiltEnabled: false,
+                    cardTilts: .constant([:]),
+                    isAccessibilityElement: false
+                )
+                .padding(10)
+                .tag(item.id)
+            }
+        }
     }
 }
 

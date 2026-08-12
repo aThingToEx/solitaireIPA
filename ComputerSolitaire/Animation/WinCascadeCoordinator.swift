@@ -80,11 +80,13 @@ enum WinCascadeCoordinator {
         let dt = CGFloat(max(1.0 / 120.0, min(1.0 / 30.0, deltaTime)))
 
         for index in states.indices {
-            states[index].elapsed += TimeInterval(dt)
-            if states[index].elapsed < states[index].activationDelay {
+            // Settled cards are done for good: skipping them before the
+            // elapsed bump keeps their state bit-identical frame to frame.
+            if states[index].isSettled {
                 continue
             }
-            if states[index].isSettled {
+            states[index].elapsed += TimeInterval(dt)
+            if states[index].elapsed < states[index].activationDelay {
                 continue
             }
 

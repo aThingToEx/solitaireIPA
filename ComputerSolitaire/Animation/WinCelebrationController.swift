@@ -11,14 +11,66 @@ final class WinCelebrationController {
         case completed
     }
 
-    private(set) var cards: [WinCascadeCardState] = []
+    /// Immutable snapshot of the cascade's cards taken at launch (faces and
+    /// sizes never change in flight). The overlay builds its Canvas symbols
+    /// from this, and replacing it is what tells SwiftUI a new cascade — or a
+    /// resynced settled pile — needs rendering; the live `cards` below stay
+    /// invisible to observation.
+    private(set) var launchStates: [WinCascadeCardState] = []
     private(set) var hiddenFoundationCardIDs: Set<UUID> = []
     private(set) var phase: Phase = .idle
 
-    private var cascadeTask: Task<Void, Never>?
+    /// Live simulation state, advanced by `tick` once per display frame.
+    /// Outside observation on purpose: the cascade Canvas reads it from its
+    /// renderer closure (untracked), and the per-frame mutation must not
+    /// schedule a second SwiftUI update on top of the TimelineView's own.
+    @ObservationIgnored private(set) var cards: [WinCascadeCardState] = []
+    @ObservationIgnored private var lastTickDate: Date?
+    @ObservationIgnored private var isCompletionScheduled = false
+    /// Bumped whenever the cascade's lifecycle restarts, so a completion
+    /// deferred from `tick` can never land on a different cascade than the
+    /// one that settled.
+    @ObservationIgnored private var cascadeGeneration = 0
 
     var isAnimating: Bool {
         phase == .animating
+    }
+
+    /// Advances the physics by the real time elapsed since the previous
+    /// frame. Called from the cascade Canvas renderer on each TimelineView
+    /// frame, so the simulation runs at the display's native cadence (120 Hz
+    /// on ProMotion) and a slow frame skips ahead instead of stretching the
+    /// animation into slow motion — `step` clamps the delta to keep the
+    /// physics stable across hitches.
+    func tick(at date: Date, boardBounds: CGRect) {
+        guard phase == .animating else { return }
+        guard let previousTickDate = lastTickDate else {
+            // First frame draws the launch positions as-is.
+            lastTickDate = date
+            return
+        }
+        let deltaTime = date.timeIntervalSince(previousTickDate)
+        lastTickDate = date
+        guard deltaTime > 0 else { return }
+
+        WinCascadeCoordinator.step(
+            states: &cards,
+            deltaTime: deltaTime,
+            boardBounds: boardBounds
+        )
+
+        if !cards.isEmpty, !isCompletionScheduled, cards.allSatisfy(\.isSettled) {
+            // The renderer is no place to publish observable state — defer
+            // the phase flip to the next main-actor turn.
+            isCompletionScheduled = true
+            let generation = cascadeGeneration
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.cascadeGeneration == generation,
+                      self.phase == .animating else { return }
+                self.phase = .completed
+            }
+        }
     }
 
     /// `launchPiles` are the piles the cascade erupts from, with `launchTargets`
@@ -41,10 +93,12 @@ final class WinCelebrationController {
     }
 
     func reset(to phase: Phase = .idle) {
-        cascadeTask?.cancel()
-        cascadeTask = nil
+        cascadeGeneration += 1
         cards = []
+        launchStates = []
         hiddenFoundationCardIDs = []
+        lastTickDate = nil
+        isCompletionScheduled = false
         self.phase = phase
     }
 
@@ -55,8 +109,9 @@ final class WinCelebrationController {
         dropFrames: [DropTarget: DropTargetGeometry],
         boardViewportSize: CGSize
     ) {
-        cascadeTask?.cancel()
-        cascadeTask = nil
+        cascadeGeneration += 1
+        lastTickDate = nil
+        isCompletionScheduled = false
         if isWin {
             let completedCards = completedStatesForLoadedWin(
                 launchPiles: launchPiles,
@@ -65,20 +120,17 @@ final class WinCelebrationController {
                 boardViewportSize: boardViewportSize
             )
             cards = completedCards
+            launchStates = completedCards
             hiddenFoundationCardIDs = completedCards.isEmpty
                 ? []
                 : Self.launchCardIDs(from: launchPiles)
             phase = .completed
         } else {
             cards = []
+            launchStates = []
             hiddenFoundationCardIDs = []
             phase = .idle
         }
-    }
-
-    func cancelTask() {
-        cascadeTask?.cancel()
-        cascadeTask = nil
     }
 
     private func begin(
@@ -111,37 +163,12 @@ final class WinCelebrationController {
             return
         }
 
-        cascadeTask?.cancel()
+        cascadeGeneration += 1
         cards = initialStates
+        launchStates = initialStates
+        lastTickDate = nil
+        isCompletionScheduled = false
         phase = .animating
-
-        cascadeTask = Task { @MainActor in
-            let tickNanos: UInt64 = 16_666_667
-
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: tickNanos)
-                guard !Task.isCancelled else { return }
-                guard phase == .animating else { return }
-
-                let bounds = CGRect(origin: .zero, size: boardViewportSize)
-                WinCascadeCoordinator.step(
-                    states: &cards,
-                    deltaTime: 1.0 / 60.0,
-                    boardBounds: bounds
-                )
-
-                if !cards.isEmpty && cards.allSatisfy(\.isSettled) {
-                    finish()
-                    return
-                }
-            }
-        }
-    }
-
-    private func finish() {
-        cascadeTask?.cancel()
-        cascadeTask = nil
-        phase = .completed
     }
 
     private static func launchCardIDs(from launchPiles: [[Card]]) -> Set<UUID> {
