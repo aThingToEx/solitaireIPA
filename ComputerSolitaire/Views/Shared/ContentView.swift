@@ -582,7 +582,6 @@ struct ContentView: View {
                 initializeGameIfNeeded()
             }
             .onDisappear {
-                winCelebration.cancelTask()
                 persistGameNow()
             }
 #if os(macOS)
