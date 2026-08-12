@@ -138,12 +138,9 @@ struct UndoOverlayView: View {
     }
 }
 
-/// The falling-cards celebration, rendered as a single Canvas: a TimelineView
-/// supplies the display's frame clock, the renderer advances the physics by
-/// the real elapsed time, and each card face resolves once as a Canvas symbol
-/// that gets stamped with a per-frame transform. One view invalidation and
-/// one draw pass per frame — never 52 live card views each dragging their own
-/// shadow blur through the compositor.
+/// The falling-cards celebration as a single Canvas: a TimelineView supplies
+/// the frame clock, and each card face resolves once as a symbol stamped
+/// with a per-frame transform.
 struct WinCascadeOverlayView: View {
     let winCelebration: WinCelebrationController
 
@@ -157,8 +154,6 @@ struct WinCascadeOverlayView: View {
                     cascadeCanvas(tickDate: timeline.date)
                 }
             case .completed:
-                // The settled pile, static: redraws only when the controller
-                // publishes new launch states (relaunch into a won game).
                 cascadeCanvas(tickDate: nil)
             }
         }
@@ -166,9 +161,9 @@ struct WinCascadeOverlayView: View {
         .accessibilityHidden(true)
     }
 
-    /// A `tickDate` advances the simulation before drawing; nil draws the
-    /// states as they stand. The canvas fills the overlay, so its size is the
-    /// live board viewport — the physics bounds track window resizes.
+    /// A tickDate advances the simulation before drawing; nil draws the
+    /// settled states as-is. The canvas size is the live board viewport, so
+    /// the physics bounds track window resizes.
     private func cascadeCanvas(tickDate: Date?) -> some View {
         Canvas { context, size in
             if let tickDate {
@@ -194,13 +189,9 @@ struct WinCascadeOverlayView: View {
                 cardContext.draw(symbol, at: .zero)
             }
         } symbols: {
-            // Faces and sizes are fixed for the cascade's lifetime, so each
-            // card view resolves to a texture once and is stamped thereafter.
-            // No added drop shadow: the card artwork's own chrome shadow is
-            // all a resting card has, and the overlay copies must match it so
-            // launch doesn't pop an extra shadow on. The padding keeps that
-            // built-in shadow inside the rasterized bounds; being symmetric,
-            // it leaves the card centered so stamping stays position-exact.
+            // No added shadow: flying cards must match resting ones. The
+            // symmetric padding keeps the artwork's own shadow inside the
+            // raster without shifting the card's center.
             ForEach(winCelebration.launchStates) { item in
                 CardView(
                     card: item.card,

@@ -11,37 +11,29 @@ final class WinCelebrationController {
         case completed
     }
 
-    /// Immutable snapshot of the cascade's cards taken at launch (faces and
-    /// sizes never change in flight). The overlay builds its Canvas symbols
-    /// from this, and replacing it is what tells SwiftUI a new cascade — or a
-    /// resynced settled pile — needs rendering; the live `cards` below stay
-    /// invisible to observation.
+    /// Launch-time snapshot the overlay builds its Canvas symbols from.
+    /// Replacing it is what triggers a re-render; the live `cards` below
+    /// are invisible to observation.
     private(set) var launchStates: [WinCascadeCardState] = []
     private(set) var hiddenFoundationCardIDs: Set<UUID> = []
     private(set) var phase: Phase = .idle
 
-    /// Live simulation state, advanced by `tick` once per display frame.
-    /// Outside observation on purpose: the cascade Canvas reads it from its
-    /// renderer closure (untracked), and the per-frame mutation must not
-    /// schedule a second SwiftUI update on top of the TimelineView's own.
+    /// Live simulation state. Unobserved: the Canvas renderer reads it
+    /// untracked, and its per-frame mutation must not schedule updates on
+    /// top of the TimelineView's own.
     @ObservationIgnored private(set) var cards: [WinCascadeCardState] = []
     @ObservationIgnored private var lastTickDate: Date?
     @ObservationIgnored private var isCompletionScheduled = false
-    /// Bumped whenever the cascade's lifecycle restarts, so a completion
-    /// deferred from `tick` can never land on a different cascade than the
-    /// one that settled.
+    /// Keeps a deferred completion from landing on a later cascade.
     @ObservationIgnored private var cascadeGeneration = 0
 
     var isAnimating: Bool {
         phase == .animating
     }
 
-    /// Advances the physics by the real time elapsed since the previous
-    /// frame. Called from the cascade Canvas renderer on each TimelineView
-    /// frame, so the simulation runs at the display's native cadence (120 Hz
-    /// on ProMotion) and a slow frame skips ahead instead of stretching the
-    /// animation into slow motion — `step` clamps the delta to keep the
-    /// physics stable across hitches.
+    /// Advances the physics by real elapsed time, once per display frame
+    /// from the Canvas renderer, so a slow frame skips ahead instead of
+    /// stretching the cascade into slow motion.
     func tick(at date: Date, boardBounds: CGRect) {
         guard phase == .animating else { return }
         guard let previousTickDate = lastTickDate else {
@@ -60,8 +52,7 @@ final class WinCelebrationController {
         )
 
         if !cards.isEmpty, !isCompletionScheduled, cards.allSatisfy(\.isSettled) {
-            // The renderer is no place to publish observable state — defer
-            // the phase flip to the next main-actor turn.
+            // Defer the observable phase flip out of the render pass.
             isCompletionScheduled = true
             let generation = cascadeGeneration
             Task { @MainActor [weak self] in
