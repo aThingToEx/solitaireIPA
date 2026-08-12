@@ -31,6 +31,11 @@ enum WinCascadeCoordinator {
     private static let angularVelocityDampingOnBounce: Double = 0.82
     private static let maxActiveLifetime: TimeInterval = 6.5
     private static let baseLaunchDelay: TimeInterval = 0.03
+    /// Substep the accumulator divides real frame time into.
+    private static let substepDuration: TimeInterval = 1.0 / 60.0
+    /// Cap on simulated time per frame: a long stall (app backgrounded
+    /// mid-cascade) jumps ahead sanely instead of fast-forwarding the show.
+    private static let maxAdvancePerFrame: TimeInterval = 8.0 / 60.0
 
     static func makeInitialStates(
         foundations: [[Card]],
@@ -69,15 +74,32 @@ enum WinCascadeCoordinator {
         }
     }
 
-    static func step(
+    /// Advances the simulation by real frame time, integrating in substeps
+    /// so simulated time matches wall time at any display refresh rate.
+    static func advance(
+        states: inout [WinCascadeCardState],
+        by deltaTime: TimeInterval,
+        boardBounds: CGRect
+    ) {
+        var remaining = min(deltaTime, maxAdvancePerFrame)
+        while remaining > 0 {
+            let substep = min(remaining, substepDuration)
+            step(states: &states, deltaTime: substep, boardBounds: boardBounds)
+            remaining -= substep
+        }
+    }
+
+    /// Integrates one substep; `deltaTime` must not exceed `substepDuration`,
+    /// which `advance` and the settled-state replay guarantee.
+    private static func step(
         states: inout [WinCascadeCardState],
         deltaTime: TimeInterval,
         boardBounds: CGRect
     ) {
-        guard !states.isEmpty else { return }
+        guard deltaTime > 0, !states.isEmpty else { return }
         guard boardBounds.width > 0, boardBounds.height > 0 else { return }
 
-        let dt = CGFloat(max(1.0 / 120.0, min(1.0 / 30.0, deltaTime)))
+        let dt = CGFloat(deltaTime)
 
         for index in states.indices {
             // Skipped before the elapsed bump so settled state never changes.

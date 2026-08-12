@@ -45,9 +45,9 @@ final class WinCelebrationController {
         lastTickDate = date
         guard deltaTime > 0 else { return }
 
-        WinCascadeCoordinator.step(
+        WinCascadeCoordinator.advance(
             states: &cards,
-            deltaTime: deltaTime,
+            by: deltaTime,
             boardBounds: boardBounds
         )
 
