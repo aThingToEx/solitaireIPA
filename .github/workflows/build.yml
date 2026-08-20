@@ -10,23 +10,29 @@ jobs:
 
       - name: Force Build No-Sign
         run: |
-          # Build the app and force it to output into a local 'build' folder
+          # Compile explicitly targeting an iPhone architecture
           xcodebuild -project ComputerSolitaire.xcodeproj \
                      -scheme ComputerSolitaire \
-                     -sdk iphoneos \
+                     -destination 'generic/platform=iOS' \
                      -configuration Release \
-                     -derivedDataPath build \
+                     -derivedDataPath output_folder \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      clean build
           
-          # Create the required Sideloadly folder structure
+          # Create Sideloadly payload packaging folder
           mkdir -p Payload
           
-          # Find the compiled .app file inside the local build directory and copy it
-          cp -R build/Build/Products/Release-iphoneos/ComputerSolitaire.app Payload/
+          # Find any generated .app bundle inside the build folder and copy it to Payload
+          find output_folder -name "ComputerSolitaire.app" -exec cp -R {} Payload/ \;
           
-          # Zip it up into a clean .ipa package
+          # Verify the app bundle was successfully grabbed
+          if [ ! -d "Payload/ComputerSolitaire.app" ]; then
+            echo "ERROR: ComputerSolitaire.app file could not be located in the build directory."
+            exit 1
+          fi
+          
+          # Compress into an installation-ready .ipa archive
           zip -r ComputerSolitaire.ipa Payload
 
       - name: Upload IPA Artifact
