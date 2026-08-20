@@ -1,0 +1,29 @@
+name: Build IPA
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Force Build No-Sign
+        run: |
+          xcodebuild -project ComputerSolitaire.xcodeproj \
+                     -scheme ComputerSolitaire \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     clean build
+          
+          mkdir -p Payload
+          mv build/Release-iphoneos/ComputerSolitaire.app Payload/
+          zip -r ComputerSolitaire.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ComputerSolitaire-IPA
+          path: ComputerSolitaire.ipa
