@@ -8,25 +8,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Archive and Package iOS App
+      - name: Setup Xcode version
         run: |
-          # 1. Force compilation explicitly into a standalone iOS Archive
+          # Use a stable Xcode configuration that matches the project constraints
+          sudo xcode-select -s /Applications/Xcode_26.6.app/Contents/Developer
+
+      - name: Compile Standalone Mobile App
+        run: |
+          # Build by specifically targeting the iOS platform stack and stripping desktop extensions
           xcodebuild archive \
                      -project ComputerSolitaire.xcodeproj \
                      -scheme ComputerSolitaire \
                      -destination 'generic/platform=iOS' \
                      -archivePath build/ComputerSolitaire.xcarchive \
+                     -skipPackagePluginValidation \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      COMPILER_INDEX_STORE_ENABLE=NO
 
-          # 2. Re-create the standard Sideloadly payload container structure
+          # Create Sideloadly payload tree structure
           mkdir -p Payload
 
-          # 3. Pull the compiled app bundle directly out of the generated archive
-          cp -R build/ComputerSolitaire.xcarchive/Products/Applications/ComputerSolitaire.app Payload/
+          # Copy over the isolated app package binary
+          cp -R build/ComputerSolitaire.xcarchive/Products/Applications/*.app Payload/
 
-          # 4. Zip the payload into an official .ipa installation bundle
+          # Package it as a clear installation archive
           zip -r ComputerSolitaire.ipa Payload
 
       - name: Upload IPA Artifact
